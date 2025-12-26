@@ -73,7 +73,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     ln -sf /usr/local/nginx/sbin/nginx /usr/sbin/nginx
 
 # 暴露端口
-EXPOSE 1935  # RTMP默认端口
+EXPOSE 1935  
 EXPOSE 8081    
 EXPOSE 8088   
 
