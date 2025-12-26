@@ -18,6 +18,10 @@ mkdir -p /tmp/dash
 mkdir -p /rec
 mkdir -p /rec/single
 
+# 设置 PATH 环境变量，确保 nginx 能找到 ffmpeg
+export PATH="/usr/local/bin:$PATH"
+echo "PATH: $PATH"
+
 # 测试nginx配置
 echo "Testing nginx configuration..."
 nginx -t
