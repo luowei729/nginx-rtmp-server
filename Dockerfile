@@ -11,7 +11,8 @@ RUN apk add --no-cache \
     openssl-dev \
     linux-headers \
     curl \
-    tar
+    tar \
+    bash
 
 # 创建工作目录
 WORKDIR /tmp
@@ -40,6 +41,9 @@ RUN ./configure \
 # 创建运行阶段
 FROM alpine:3.18
 
+# 定义架构参数
+ARG TARGETARCH
+
 # 安装运行时的依赖
 RUN apk add --no-cache \
     pcre \
@@ -47,15 +51,39 @@ RUN apk add --no-cache \
     openssl \
     ca-certificates \
     libstdc++ \
-    tzdata
-
-# 从构建阶段复制编译好的nginx
-COPY --from=builder /usr/local/nginx /usr/local/nginx
+    tzdata \
+    bash \
+    curl
 
 # 创建必要的目录
 RUN mkdir -p /var/log/nginx && \
     mkdir -p /var/cache/nginx && \
-    mkdir -p /tmp/nginx
+    mkdir -p /tmp/nginx && \
+    mkdir -p /usr/local/nginx/logs && \
+    mkdir -p /usr/local/nginx/run && \
+    mkdir -p /rec && \
+    mkdir -p /tmp/hls && \
+    mkdir -p /tmp/dash && \
+    mkdir -p /rec/single
+
+# 根据架构下载对应的 ffmpeg
+RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "x86_64" ] || [ -z "$TARGETARCH" ]; then \
+        echo "Downloading x64 ffmpeg..." && \
+        curl -L -o /usr/local/bin/ffmpeg https://pan.lkz.pub/lkz/ffmpeg_7.0 && \
+        chmod +x /usr/local/bin/ffmpeg && \
+        /usr/local/bin/ffmpeg -version | head -n 1; \
+    elif [ "$TARGETARCH" = "arm64" ] || [ "$TARGETARCH" = "aarch64" ]; then \
+        echo "Downloading arm64 ffmpeg..." && \
+        curl -L -o /usr/local/bin/ffmpeg https://pan.lkz.pub/lkz/ffmpeg_arm && \
+        chmod +x /usr/local/bin/ffmpeg && \
+        /usr/local/bin/ffmpeg -version | head -n 1; \
+    else \
+        echo "Unsupported architecture: $TARGETARCH" && \
+        exit 1; \
+    fi
+
+# 从构建阶段复制编译好的nginx
+COPY --from=builder /usr/local/nginx /usr/local/nginx
 
 # 复制配置文件
 COPY nginx.conf /usr/local/nginx/conf/nginx.conf
@@ -68,16 +96,16 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     ln -sf /usr/local/nginx/sbin/nginx /usr/sbin/nginx
 
 # 暴露端口
-EXPOSE 1935  
-EXPOSE 8081 
-EXPOSE 8088
+EXPOSE 1935  # RTMP默认端口
+EXPOSE 8081  # HTTP端口（用于状态页面和HLS）
+EXPOSE 8088  # 视频流文件访问端口
 
 # 设置工作目录
 WORKDIR /usr/local/nginx
 
 # 设置健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD nginx -t 2>/dev/null || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8081/stat || exit 1
 
 # 设置入口点
 ENTRYPOINT ["docker-entrypoint.sh"]
