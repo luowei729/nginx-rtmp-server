@@ -16,7 +16,7 @@ RUN apk add --no-cache \
 # 创建工作目录
 WORKDIR /tmp
 
-# 复制源码文件（GitHub Actions会自动复制所有文件到工作目录）
+# 复制源码文件
 COPY nginx.tar.gz rtmp.tar.gz ./
 
 # 解压文件
@@ -49,18 +49,13 @@ RUN apk add --no-cache \
     libstdc++ \
     tzdata
 
-# 创建非root用户
-RUN addgroup -g 1000 nginx && \
-    adduser -D -u 1000 -G nginx nginx
-
 # 从构建阶段复制编译好的nginx
 COPY --from=builder /usr/local/nginx /usr/local/nginx
 
 # 创建必要的目录
 RUN mkdir -p /var/log/nginx && \
     mkdir -p /var/cache/nginx && \
-    mkdir -p /tmp/nginx && \
-    chown -R nginx:nginx /var/log/nginx /var/cache/nginx /tmp/nginx
+    mkdir -p /tmp/nginx
 
 # 复制配置文件
 COPY nginx.conf /usr/local/nginx/conf/nginx.conf
@@ -73,22 +68,18 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     ln -sf /usr/local/nginx/sbin/nginx /usr/sbin/nginx
 
 # 暴露端口
-EXPOSE 1935  
-EXPOSE 8081    
-EXPOSE 8088   
-
-# 切换到非root用户
-USER nginx
+EXPOSE 1935  # RTMP默认端口
+EXPOSE 80    # HTTP端口（用于状态页面）
 
 # 设置工作目录
 WORKDIR /usr/local/nginx
 
 # 设置健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD nginx -t || exit 1
+    CMD nginx -t 2>/dev/null || exit 1
 
 # 设置入口点
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-# 默认命令
+# 默认命令（以root身份运行）
 CMD ["nginx", "-g", "daemon off;"]
