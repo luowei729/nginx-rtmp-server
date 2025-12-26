@@ -71,11 +71,13 @@ RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "x86_64" ] || [ -z "$TAR
         echo "Downloading x64 ffmpeg..." && \
         curl -L -o /usr/local/bin/ffmpeg https://pan.lkz.pub/lkz/ffmpeg_7.0 && \
         chmod +x /usr/local/bin/ffmpeg && \
+        cp /usr/local/bin/ffmpeg /usr/bin/ffmpeg && \
         /usr/local/bin/ffmpeg -version | head -n 1; \
     elif [ "$TARGETARCH" = "arm64" ] || [ "$TARGETARCH" = "aarch64" ]; then \
         echo "Downloading arm64 ffmpeg..." && \
         curl -L -o /usr/local/bin/ffmpeg https://pan.lkz.pub/lkz/ffmpeg_arm && \
         chmod +x /usr/local/bin/ffmpeg && \
+        cp /usr/local/bin/ffmpeg /usr/bin/ffmpeg && \
         /usr/local/bin/ffmpeg -version | head -n 1; \
     else \
         echo "Unsupported architecture: $TARGETARCH" && \
