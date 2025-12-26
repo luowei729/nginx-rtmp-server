@@ -6,11 +6,11 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/nginx-rtmp-server
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -18,6 +18,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+      
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
 
     steps:
     - name: Checkout repository
@@ -43,20 +46,19 @@ jobs:
           type=ref,event=pr
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
-          type=sha,prefix={{branch}}-
+          type=sha,prefix=sha-
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64  # 多架构支持
+        platforms: linux/amd64,linux/arm64
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  # 可选：测试镜像
   test-image:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -78,12 +80,37 @@ jobs:
         
     - name: Test the built image
       run: |
-        docker run --rm -d --name nginx-test ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-        sleep 5
+        # 获取提交的短SHA
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        
+        # 构建镜像标签
+        IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-$SHORT_SHA"
+        
+        echo "Testing image: $IMAGE_TAG"
+        
+        # 先拉取镜像
+        docker pull $IMAGE_TAG
+        
+        # 运行容器
+        docker run --rm -d \
+          -p 1935:1935 \
+          --name nginx-test \
+          $IMAGE_TAG
+        
+        # 等待容器启动
+        sleep 10
+        
+        # 检查容器是否运行
         if docker ps | grep -q nginx-test; then
           echo "✅ 容器运行正常"
+          
+          # 停止容器
           docker stop nginx-test
+          echo "✅ 测试通过"
         else
           echo "❌ 容器启动失败"
+          
+          # 查看容器日志
+          docker logs nginx-test || true
           exit 1
         fi
