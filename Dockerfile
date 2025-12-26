@@ -74,8 +74,8 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
 
 # 暴露端口
 EXPOSE 1935  # RTMP默认端口
-EXPOSE 80    # HTTP端口（用于状态页面）
-EXPOSE 443   # HTTPS端口
+EXPOSE 8081    
+EXPOSE 8088   
 
 # 切换到非root用户
 USER nginx
