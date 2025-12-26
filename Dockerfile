@@ -74,7 +74,7 @@ RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "x86_64" ] || [ -z "$TAR
         /usr/local/bin/ffmpeg -version | head -n 1; \
     elif [ "$TARGETARCH" = "arm64" ] || [ "$TARGETARCH" = "aarch64" ]; then \
         echo "Downloading arm64 ffmpeg..." && \
-        curl -L -o /usr/local/bin/ffmpeg https://pan.lkz.pub/lkz/ffmpeg_arm && \
+        curl -L -o /usr/local/bin/ffmpeg https://pan.lkz.pub/lkz/ffmpeg_7.0_arm && \
         chmod +x /usr/local/bin/ffmpeg && \
         /usr/local/bin/ffmpeg -version | head -n 1; \
     else \
